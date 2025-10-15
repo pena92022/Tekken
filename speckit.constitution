@@ -1,0 +1,83 @@
+# Constitution for Competitive Gaming Analytics Platform
+
+## Code Quality & Architecture Principles
+
+### TypeScript Usage
+- Maintain strict TypeScript typing throughout the application with no 'any' types except when absolutely necessary
+
+### Next.js 14+ App Router Best Practices
+- Follow Next.js 14+ App Router best practices with server and client components properly separated
+
+### Error Handling and Loading States
+- Implement proper error boundaries and loading states for all async operations
+
+### Component Design
+- Use composition over inheritance for component design
+- Keep components focused and single-responsibility
+
+### File Structure
+- Maintain consistent file structure: features/[feature]/components, features/[feature]/hooks, features/[feature]/utils
+
+## Performance Requirements
+
+### Loading Times
+- Initial page load must be under 2 seconds on 3G connections
+- AI analysis results must stream to the user within 3 seconds of request
+
+### Database Optimization
+- Database queries must be optimized with proper indexes and caching strategies
+
+### Enhancement Strategies
+- Implement progressive enhancement - core functionality works without JavaScript
+- Use React Server Components for data fetching where possible
+- Lazy load AI model initialization to prevent blocking the main thread
+
+## User Experience Consistency
+
+### Design Considerations
+- Design for split-screen usage (user has game on one screen, app on another)
+- Provide real-time feedback during all AI processing operations
+- Support keyboard shortcuts for power users during active gameplay
+- Ensure mobile responsiveness even though primary use is desktop
+
+### Accessibility and Feedback
+- Maintain accessibility standards (WCAG 2.1 AA minimum)
+- Clear error messages that guide users to resolution
+- Loading states must be informative, not just spinners
+
+## Testing Standards
+
+### Test Coverage Requirements
+- Unit tests required for all utility functions and hooks
+- Integration tests for all API routes and database operations
+- E2E tests for critical user flows (authentication, payment, AI analysis)
+- Minimum 80% code coverage for business logic
+- Test AI prompt engineering with sample data before production deployment
+
+## Security & Privacy
+
+### Data Protection
+- Never store user API keys in plain text
+- Implement rate limiting on all API endpoints
+- Validate and sanitize all user inputs
+- Use environment variables for all sensitive configuration
+- Implement proper CORS policies
+- Audit third-party dependencies regularly
+
+## Data Integrity
+
+### Database Management
+- Implement database migrations with rollback capabilities
+- Validate data at both client and server levels
+- Use Zod schemas for runtime type validation
+- Implement proper database indexes for query performance
+- Regular automated backups of Supabase data
+
+## Deployment & Monitoring
+
+### Production Readiness
+- Implement proper CI/CD with automated testing
+- Use feature flags for gradual rollouts
+- Monitor API usage and costs in real-time
+- Log errors with proper context for debugging
+- Implement health check endpoints
