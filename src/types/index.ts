@@ -46,12 +46,9 @@ export interface UserPreferences {
 export interface MatchAnalysisRequest {
   playerCharacter: string
   opponentCharacter: string
-  stage?: string
-  gameMode?: string
 }
 
 export interface MatchAnalysis {
-  summary: string
   keyMoves: {
     name: string
     notation: string

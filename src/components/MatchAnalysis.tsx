@@ -34,8 +34,6 @@ export function MatchAnalysis() {
   const [request, setRequest] = useState<MatchAnalysisRequest>({
     playerCharacter: '',
     opponentCharacter: '',
-    stage: '',
-    gameMode: 'Ranked Match'
   })
 
   const [analysis, setAnalysis] = useState<MatchAnalysis | null>(null)
@@ -52,11 +50,11 @@ export function MatchAnalysis() {
     setError(null)
 
     try {
-      // For demo, use mock AI config. In production, get from user preferences
+      // Use OpenAI by default (more accurate than Ollama)
       const config: AIModelConfig = {
-        provider: 'shared',
-        model: 'gpt-4',
-        // apiKey: userPreferences.apiKey
+        provider: 'openai',
+        model: 'gpt-4o-mini',
+        apiKey: process.env.OPENAI_API_KEY
       }
 
       const result = await aiService.analyzeMatch(request, config)
@@ -114,43 +112,6 @@ export function MatchAnalysis() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Stage (Optional)</label>
-              <Select
-                value={request.stage || ''}
-                onValueChange={(value: string) => setRequest(prev => ({ ...prev, stage: value || undefined }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select stage" />
-                </SelectTrigger>
-                <SelectContent>
-                  {STAGES_T8.map(stage => (
-                    <SelectItem key={stage} value={stage}>{stage}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Game Mode</label>
-              <Select
-                value={request.gameMode}
-                onValueChange={(value: string) => setRequest(prev => ({ ...prev, gameMode: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Ranked Match">Ranked Match</SelectItem>
-                  <SelectItem value="Casual Match">Casual Match</SelectItem>
-                  <SelectItem value="Tournament">Tournament</SelectItem>
-                  <SelectItem value="Training">Training</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
           <Button
             onClick={handleAnalyze}
             disabled={isAnalyzing}
@@ -179,15 +140,6 @@ export function MatchAnalysis() {
 
       {analysis && (
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Match Analysis Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-slate-300">{analysis.summary}</p>
-            </CardContent>
-          </Card>
-
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>

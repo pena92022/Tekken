@@ -2,6 +2,8 @@ import OpenAI from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { AIModelConfig, MatchAnalysisRequest, MatchAnalysis } from '@/types'
+import { buildMatchupContext } from './matchup-context'
+import { validateMatchAnalysis } from './schemas'
 
 class AIProvider {
   private openai?: OpenAI
@@ -34,7 +36,7 @@ class AIProvider {
   }
 
   async analyzeMatch(request: MatchAnalysisRequest): Promise<MatchAnalysis> {
-    const prompt = this.buildTekkenPrompt(request)
+    const prompt = await this.buildTekkenPrompt(request)
 
     switch (this.config.provider) {
       case 'openai':
@@ -50,17 +52,90 @@ class AIProvider {
     }
   }
 
-  private buildTekkenPrompt(request: MatchAnalysisRequest): string {
+  private async buildTekkenPrompt(request: MatchAnalysisRequest): Promise<string> {
+    // Fetch matchup context with real frame data
+    let context
+    try {
+      context = await buildMatchupContext(
+        request.playerCharacter,
+        request.opponentCharacter
+      )
+    } catch (error) {
+      console.warn('[AI] Failed to fetch frame data, using basic prompt:', error)
+      // Fallback to basic prompt without frame data
+      return this.buildBasicPrompt(request)
+    }
+
+    return `
+You are an expert Tekken 8 competitive analyst with access to accurate frame data.
+
+## Matchup
+- Player Character: ${context.playerCharacter}
+- Opponent Character: ${context.opponentCharacter}
+
+## Player's Key Moves (Your Arsenal)
+${context.playerKeyMoves.slice(0, 15).map(m => 
+  `- ${m.command}: ${m.hitLevel}, ${m.damage} damage, ${m.startup}f startup, ${m.block} on block${m.notes ? ` (${m.notes})` : ''}`
+).join('\n')}
+
+## Opponent's Punishable Moves (Exploit These)
+${context.opponentPunishableMoves.slice(0, 10).map(m =>
+  `- ${m.command}: ${m.hitLevel}, ${m.damage} damage, ${m.block} on block (PUNISHABLE)${m.notes ? ` - ${m.notes}` : ''}`
+).join('\n')}
+
+## Task
+Provide strategic matchup analysis in JSON format. Focus on:
+1. Which of your key moves work best in this matchup (use actual move notations from above)
+2. How to punish opponent's unsafe moves (use actual punishable moves from above)
+3. Specific strategies tailored to this matchup
+
+## JSON Schema (MUST follow exactly)
+{
+  "keyMoves": [
+    {
+      "name": "Move name from player's arsenal",
+      "notation": "Exact command notation from the list above",
+      "description": "Why this move is strong in this matchup (50-100 words)",
+      "priority": "high" | "medium" | "low"
+    }
+  ],
+  "counters": [
+    {
+      "move": "Opponent move command from punishable moves above",
+      "counter": "Your punish move command from key moves above",
+      "frameAdvantage": 10
+    }
+  ],
+  "strategies": [
+    {
+      "name": "Strategy name (e.g., 'Pressure with Plus Frames')",
+      "description": "How to execute this strategy (100-150 words)",
+      "conditions": ["When to use this strategy"]
+    }
+  ],
+  "tips": [
+    "Quick tactical tip 1",
+    "Quick tactical tip 2",
+    "Quick tactical tip 3"
+  ]
+}
+
+IMPORTANT: 
+- Use ONLY moves from the lists above
+- Respond with VALID JSON only, no markdown, no explanation
+- Include at least 5 key moves, 3 counters, 3 strategies, and 3 tips
+- Frame advantage numbers must be accurate based on the block frames shown
+`
+  }
+
+  private buildBasicPrompt(request: MatchAnalysisRequest): string {
     return `
 You are an expert Tekken 8 competitive analyst. Analyze this matchup and provide strategic insights.
 
 Matchup: ${request.playerCharacter} vs ${request.opponentCharacter}
-${request.stage ? `Stage: ${request.stage}` : ''}
-${request.gameMode ? `Game Mode: ${request.gameMode}` : ''}
 
 Provide analysis in JSON format with the following structure:
 {
-  "summary": "Brief overview of the matchup",
   "keyMoves": [
     {
       "name": "Move name",
@@ -101,7 +176,17 @@ Focus on frame data, punishes, wall game, and matchup-specific strategies. Be co
     const content = completion.choices[0]?.message?.content
     if (!content) throw new Error('No response from OpenAI')
 
-    return JSON.parse(content)
+    const parsed = JSON.parse(content)
+    
+    // Validate with Zod
+    try {
+      return validateMatchAnalysis(parsed)
+    } catch (error) {
+      console.error('[AI] Validation failed:', error)
+      console.error('[AI] Raw response:', parsed)
+      // Return parsed data anyway but log the issue
+      return parsed as MatchAnalysis
+    }
   }
 
   private async analyzeWithClaude(prompt: string): Promise<MatchAnalysis> {
