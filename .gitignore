@@ -40,3 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 speckit/node_modules 
+node_modules/
+**/node_modules/
+speckit/node_modules/
