@@ -19,15 +19,32 @@ export const CounterMoveSchema = z.object({
 export const StrategySchema = z.object({
   name: z.string().min(1, 'Strategy name is required'),
   description: z.string().min(20, 'Description must be at least 20 characters'),
-  conditions: z.array(z.string()).min(1, 'At least one condition is required')
+  conditions: z.array(z.string()).min(1, 'At least one condition is required'),
+  moves: z.array(z.string()).min(1, 'At least one move is required')
+})
+
+// Schema for Punish Options
+export const PunishOptionSchema = z.object({
+  opponentMove: z.string().min(1, 'Opponent move is required'),
+  punishMove: z.string().min(1, 'Punish move is required'),
+  punishWindow: z.string().min(1, 'Punish window is required'),
+  frameAdvantage: z.string().min(1, 'Frame advantage is required'),
+  description: z.string().min(10, 'Description must be at least 10 characters')
+})
+
+// Schema for Optimal Punishes
+export const OptimalPunishSchema = z.object({
+  window: z.string().min(1, 'Window is required'),
+  recommendedMoves: z.array(z.string()).min(1, 'At least one recommended move required'),
+  situations: z.array(z.string()).min(1, 'At least one situation required')
 })
 
 // Main Match Analysis Schema
 export const MatchAnalysisSchema = z.object({
-  keyMoves: z.array(KeyMoveSchema).min(1, 'At least one key move is required'),
-  counters: z.array(CounterMoveSchema).min(1, 'At least one counter is required'),
-  strategies: z.array(StrategySchema).min(1, 'At least one strategy is required'),
-  tips: z.array(z.string()).min(1, 'At least one tip is required')
+  punishOptions: z.array(PunishOptionSchema).min(8, 'At least 8 punish options required'),
+  optimalPunishes: z.array(OptimalPunishSchema).min(3, 'At least 3 optimal punishes required'),
+  strategies: z.array(StrategySchema).min(3, 'At least 3 strategies required'),
+  tips: z.array(z.string()).min(3, 'At least 3 tips required')
 })
 
 // TekkenDocs API Response Schemas

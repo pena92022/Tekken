@@ -1,0 +1,202 @@
+{
+  "devil-jin": {
+    "punishableMoves": [],
+    "punishMoves": [
+      {
+        "Command": "1,1,2",
+        "Start up frame": "i10",
+        "Block frame": "-17",
+        "Hit level": "h,h,m",
+        "Damage": "5,6,14"
+      },
+      {
+        "Command": "2,2",
+        "Start up frame": "i10",
+        "Block frame": "-13",
+        "Hit level": "h,h",
+        "Damage": "9,20"
+      },
+      {
+        "Command": "b+1,2",
+        "Start up frame": "i12",
+        "Block frame": "-14",
+        "Hit level": "h,m",
+        "Damage": "10,20"
+      },
+      {
+        "Command": "df+4,4",
+        "Start up frame": "i13",
+        "Block frame": "-15",
+        "Hit level": "m,m",
+        "Damage": "10,16"
+      },
+      {
+        "Command": "b+2,3",
+        "Start up frame": "i14~16",
+        "Block frame": "-14",
+        "Hit level": "h,m",
+        "Damage": "11,23"
+      },
+      {
+        "Command": "f,n,d,df:2",
+        "Start up frame": "i14",
+        "Block frame": "+5",
+        "Hit level": "h",
+        "Damage": "23"
+      },
+      {
+        "Command": "d+3+4",
+        "Start up frame": "i15",
+        "Block frame": "-15",
+        "Hit level": "m,m",
+        "Damage": "5,20"
+      }
+    ]
+  },
+  "kazuya": {
+    "punishableMoves": [
+      {
+        "Command": "1,1,2",
+        "Start up frame": "i10",
+        "Block frame": "-17",
+        "Hit level": "h,h,m",
+        "Damage": "5,6,14"
+      },
+      {
+        "Command": "1,2,2",
+        "Start up frame": "i10",
+        "Block frame": "-12",
+        "Hit level": "h,h,h",
+        "Damage": "5,8,12"
+      },
+      {
+        "Command": "1,2,4",
+        "Start up frame": "i10",
+        "Block frame": "-14c",
+        "Hit level": "h,h,l",
+        "Damage": "5,8,18"
+      },
+      {
+        "Command": "1,1,2",
+        "Start up frame": "i10",
+        "Block frame": "-17",
+        "Hit level": "h,h,m",
+        "Damage": "5,6,14"
+      },
+      {
+        "Command": "1+2",
+        "Start up frame": "i12",
+        "Block frame": "-13",
+        "Hit level": "m,m",
+        "Damage": "5,20"
+      },
+      {
+        "Command": "f+3",
+        "Start up frame": "i17",
+        "Block frame": "-13",
+        "Hit level": "m",
+        "Damage": "22"
+      },
+      {
+        "Command": "df+1,4",
+        "Start up frame": "i15~16",
+        "Block frame": "-11",
+        "Hit level": "m,h",
+        "Damage": "11,20"
+      },
+      {
+        "Command": "df+3,2,1",
+        "Start up frame": "i18",
+        "Block frame": "-14",
+        "Hit level": "m,m,m",
+        "Damage": "13,15,21"
+      },
+      {
+        "Command": "df+4,4",
+        "Start up frame": "i13~14",
+        "Block frame": "-15",
+        "Hit level": "m,m",
+        "Damage": "10,16"
+      },
+      {
+        "Command": "b+1",
+        "Start up frame": "i11",
+        "Block frame": "-10",
+        "Hit level": "h",
+        "Damage": "10"
+      },
+      {
+        "Command": "b+1,2",
+        "Start up frame": "i11",
+        "Block frame": "-14",
+        "Hit level": "h,m",
+        "Damage": "10,20"
+      },
+      {
+        "Command": "b+2,2",
+        "Start up frame": "i14",
+        "Block frame": "-10",
+        "Hit level": "m,m",
+        "Damage": "12,14"
+      },
+      {
+        "Command": "ws1,2",
+        "Start up frame": "i13",
+        "Block frame": "-12",
+        "Hit level": "m,m",
+        "Damage": "10,12"
+      },
+      {
+        "Command": "ws2",
+        "Start up frame": "i16",
+        "Block frame": "-18",
+        "Hit level": "m",
+        "Damage": "25"
+      }
+    ],
+    "punishMoves": [
+      {
+        "Command": "1,1,2",
+        "Start up frame": "i10",
+        "Block frame": "-17",
+        "Hit level": "h,h,m",
+        "Damage": "5,6,14"
+      },
+      {
+        "Command": "1,2,3",
+        "Start up frame": "i10",
+        "Block frame": "+4",
+        "Hit level": "h,h,m",
+        "Damage": "5,8,25"
+      },
+      {
+        "Command": "3,1,4",
+        "Start up frame": "i14",
+        "Block frame": "-9",
+        "Hit level": "h,h,m",
+        "Damage": "12,10,17"
+      },
+      {
+        "Command": "f+3",
+        "Start up frame": "i17",
+        "Block frame": "-13",
+        "Hit level": "m",
+        "Damage": "22"
+      },
+      {
+        "Command": "f,F+2",
+        "Start up frame": "i15",
+        "Block frame": "-8",
+        "Hit level": "m",
+        "Damage": "24"
+      },
+      {
+        "Command": "f,n,d,df+4",
+        "Start up frame": "i16",
+        "Block frame": "-23",
+        "Hit level": "L",
+        "Damage": "15"
+      }
+    ]
+  }
+}

@@ -49,21 +49,23 @@ export interface MatchAnalysisRequest {
 }
 
 export interface MatchAnalysis {
-  keyMoves: {
-    name: string
-    notation: string
+  punishOptions: {
+    opponentMove: string
+    punishMove: string
+    punishWindow: string
+    frameAdvantage: string
     description: string
-    priority: 'high' | 'medium' | 'low'
+  }[]
+  optimalPunishes: {
+    window: string
+    recommendedMoves: string[]
+    situations: string[]
   }[]
   strategies: {
     name: string
     description: string
     conditions: string[]
-  }[]
-  counters: {
-    move: string
-    counter: string
-    frameAdvantage: number
+    moves: string[]
   }[]
   tips: string[]
 }

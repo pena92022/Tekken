@@ -1,5 +1,6 @@
 import { tekkenDocsClient } from './tekkendocs-client'
 import { TekkenDocsMove, MatchupContext } from '@/types/tekkendocs'
+import sampleFrameData from '@/data/sample-frame-data.json'
 
 export async function buildMatchupContext(
   playerCharacter: string,
@@ -9,17 +10,67 @@ export async function buildMatchupContext(
   const playerCharId = toCharacterId(playerCharacter)
   const opponentCharId = toCharacterId(opponentCharacter)
 
-  // Fetch both characters' frame data
-  const [playerData, opponentData] = await Promise.all([
-    tekkenDocsClient.fetchCharacterFrameData(playerCharId),
-    tekkenDocsClient.fetchCharacterFrameData(opponentCharId)
-  ])
+  // Try to fetch from local sample data first (reliable)
+  let playerData: any = null
+  let opponentData: any = null
+
+  if (sampleFrameData[playerCharId as keyof typeof sampleFrameData]) {
+    playerData = {
+      characterName: playerCharId,
+      editUrl: 'https://tekkendocs.com',
+      game: 'T8' as const,
+      framesNormal: sampleFrameData[playerCharId as keyof typeof sampleFrameData],
+      stances: []
+    }
+    console.log(`[MatchupContext] Using local data for ${playerCharId}: ${sampleFrameData[playerCharId as keyof typeof sampleFrameData].length} moves`)
+  }
+
+  if (sampleFrameData[opponentCharId as keyof typeof sampleFrameData]) {
+    opponentData = {
+      characterName: opponentCharId,
+      editUrl: 'https://tekkendocs.com',
+      game: 'T8' as const,
+      framesNormal: sampleFrameData[opponentCharId as keyof typeof sampleFrameData],
+      stances: []
+    }
+    console.log(`[MatchupContext] Using local data for ${opponentCharId}: ${sampleFrameData[opponentCharId as keyof typeof sampleFrameData].length} moves`)
+  }
+
+  // If no local data, try external API as fallback
+  if (!playerData || !opponentData) {
+    console.log('[MatchupContext] Local data not found, trying external API...')
+    try {
+      const [fetchedPlayerData, fetchedOpponentData] = await Promise.all([
+        playerData ? Promise.resolve(playerData) : tekkenDocsClient.fetchCharacterFrameData(playerCharId),
+        opponentData ? Promise.resolve(opponentData) : tekkenDocsClient.fetchCharacterFrameData(opponentCharId)
+      ])
+      playerData = fetchedPlayerData
+      opponentData = fetchedOpponentData
+      console.log('[MatchupContext] Successfully fetched external frame data')
+    } catch (error) {
+      console.error('[MatchupContext] Failed to fetch external frame data:', error)
+      // Create minimal fallback data
+      const fallbackData = {
+        characterName: playerCharId,
+        editUrl: 'https://tekkendocs.com',
+        game: 'T8' as const,
+        framesNormal: [] as TekkenDocsMove[],
+        stances: []
+      }
+      playerData = playerData || fallbackData
+      opponentData = opponentData || fallbackData
+    }
+  }
 
   // Identify key moves (launchers, good pokes, etc.)
-  const playerKeyMoves = identifyKeyMoves(playerData.framesNormal)
-  
+  const playerKeyMoves = playerData.framesNormal.length > 0
+    ? identifyKeyMoves(playerData.framesNormal)
+    : [] // Fallback to empty array if no data
+
   // Identify punishable moves (unsafe on block)
-  const opponentPunishableMoves = identifyPunishableMoves(opponentData.framesNormal)
+  const opponentPunishableMoves = opponentData.framesNormal.length > 0
+    ? identifyPunishableMoves(opponentData.framesNormal)
+    : [] // Fallback to empty array if no data
 
   return {
     playerCharacter,

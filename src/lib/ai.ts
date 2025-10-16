@@ -4,6 +4,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { AIModelConfig, MatchAnalysisRequest, MatchAnalysis } from '@/types'
 import { buildMatchupContext } from './matchup-context'
 import { validateMatchAnalysis } from './schemas'
+import sampleFrameData from '@/data/sample-frame-data.json'
+import punishData from '@/data/tekken-punish-data.json'
 
 class AIProvider {
   private openai?: OpenAI
@@ -46,7 +48,7 @@ class AIProvider {
       case 'gemini':
         return this.analyzeWithGemini(prompt)
       case 'ollama':
-        return this.analyzeWithOllama(prompt)
+        return this.analyzeWithOllama(prompt, request)
       default:
         throw new Error(`Unsupported AI provider: ${this.config.provider}`)
     }
@@ -60,8 +62,9 @@ class AIProvider {
         request.playerCharacter,
         request.opponentCharacter
       )
+      console.log('[AI] Successfully fetched context for', request.playerCharacter, 'vs', request.opponentCharacter)
     } catch (error) {
-      console.warn('[AI] Failed to fetch frame data, using basic prompt:', error)
+      console.error('[AI] Failed to fetch frame data from tekkendocs.com:', error)
       // Fallback to basic prompt without frame data
       return this.buildBasicPrompt(request)
     }
@@ -73,58 +76,66 @@ You are an expert Tekken 8 competitive analyst with access to accurate frame dat
 - Player Character: ${context.playerCharacter}
 - Opponent Character: ${context.opponentCharacter}
 
-## Player's Key Moves (Your Arsenal)
-${context.playerKeyMoves.slice(0, 15).map(m => 
-  `- ${m.command}: ${m.hitLevel}, ${m.damage} damage, ${m.startup}f startup, ${m.block} on block${m.notes ? ` (${m.notes})` : ''}`
-).join('\n')}
+## Opponent's Punishable Moves (What You Can Punish)
+${context.opponentPunishableMoves.slice(0, 20).map(m => {
+  const blockFrame = parseInt(m.block.replace(/[+]/g, ''))
+  const punishWindow = isNaN(blockFrame) ? 'UNKNOWN' : Math.abs(blockFrame)
+  const punishType = isNaN(blockFrame) ? 'UNKNOWN' : (typeof punishWindow === 'number' && punishWindow >= 15) ? 'LAUNCH' : (typeof punishWindow === 'number' && punishWindow >= 10) ? 'FAST' : 'SLOW'
+  return `- ${m.command}: ${m.hitLevel}, ${m.damage} damage, ${m.startup}f startup, ${m.block} on block, ${punishType} punish window${m.notes ? ` (${m.notes})` : ''}`
+}).join('\n')}
 
-## Opponent's Punishable Moves (Exploit These)
-${context.opponentPunishableMoves.slice(0, 10).map(m =>
-  `- ${m.command}: ${m.hitLevel}, ${m.damage} damage, ${m.block} on block (PUNISHABLE)${m.notes ? ` - ${m.notes}` : ''}`
-).join('\n')}
+## Your Punish Moves (Available Counters)
+${context.playerKeyMoves.slice(0, 25).map(m => {
+  const startup = parseInt(m.startup)
+  const punishSpeed = isNaN(startup) ? 'UNKNOWN' : startup <= 12 ? 'VERY_FAST' : startup <= 15 ? 'FAST' : startup <= 18 ? 'MEDIUM' : 'SLOW'
+  return `- ${m.command}: ${m.hitLevel}, ${m.damage} damage, ${m.startup}f startup, ${m.block} on block, ${punishSpeed}${m.notes ? ` (${m.notes})` : ''}`
+}).join('\n')}
 
 ## Task
 Provide strategic matchup analysis in JSON format. Focus on:
-1. Which of your key moves work best in this matchup (use actual move notations from above)
-2. How to punish opponent's unsafe moves (use actual punishable moves from above)
-3. Specific strategies tailored to this matchup
+1. Best punish options for opponent's punishable moves (use actual move notations)
+2. Frame-specific punish recommendations (10f, 12f, 15f+ launch punish)
+3. Optimal counter strategies for this matchup
 
 ## JSON Schema (MUST follow exactly)
 {
-  "keyMoves": [
+  "punishOptions": [
     {
-      "name": "Move name from player's arsenal",
-      "notation": "Exact command notation from the list above",
-      "description": "Why this move is strong in this matchup (50-100 words)",
-      "priority": "high" | "medium" | "low"
+      "opponentMove": "Opponent move command from punishable moves above",
+      "punishMove": "Your punish move command from your moves above",
+      "punishWindow": "10f|12f|15f+|UNKNOWN",
+      "frameAdvantage": "How many frames you have (calculate: opponent block frames - your startup)",
+      "description": "Why this punish works (30-60 words)"
     }
   ],
-  "counters": [
+  "optimalPunishes": [
     {
-      "move": "Opponent move command from punishable moves above",
-      "counter": "Your punish move command from key moves above",
-      "frameAdvantage": 10
+      "window": "10f|12f|15f+",
+      "recommendedMoves": ["Your move notations that work in this window"],
+      "situations": ["When to use these punishes"]
     }
   ],
   "strategies": [
     {
-      "name": "Strategy name (e.g., 'Pressure with Plus Frames')",
-      "description": "How to execute this strategy (100-150 words)",
-      "conditions": ["When to use this strategy"]
+      "name": "Punish Strategy Name",
+      "description": "How to punish effectively (80-120 words)",
+      "conditions": ["When opponent does punishable moves"],
+      "moves": ["Specific moves to use"]
     }
   ],
   "tips": [
-    "Quick tactical tip 1",
-    "Quick tactical tip 2",
-    "Quick tactical tip 3"
+    "Punish tip 1 (be specific about frames and moves)",
+    "Punish tip 2 (be specific about frames and moves)",
+    "Punish tip 3 (be specific about frames and moves)"
   ]
 }
 
-IMPORTANT: 
+IMPORTANT:
+- Calculate frame advantage: opponent block frames (ignore + sign) + your startup frames
 - Use ONLY moves from the lists above
+- Focus on punish opportunities and frame-specific counters
 - Respond with VALID JSON only, no markdown, no explanation
-- Include at least 5 key moves, 3 counters, 3 strategies, and 3 tips
-- Frame advantage numbers must be accurate based on the block frames shown
+- Include at least 8 punish options, 3 optimal punishes, 3 strategies, and 3 tips
 `
   }
 
@@ -211,24 +222,187 @@ Focus on frame data, punishes, wall game, and matchup-specific strategies. Be co
     return JSON.parse(text)
   }
 
-  private async analyzeWithOllama(prompt: string): Promise<MatchAnalysis> {
-    // Ollama integration would go here
-    // For now, return mock data
-    const response = await fetch(`${this.config.endpoint}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: this.config.model,
-        prompt,
-        format: 'json',
-        stream: false,
-      }),
-    })
+  private async analyzeWithOllama(prompt: string, request?: MatchAnalysisRequest): Promise<MatchAnalysis> {
+    try {
+      console.log('[Ollama] Sending request to:', `${this.config.endpoint}/api/generate`)
+      console.log('[Ollama] Model:', this.config.model)
+      console.log('[Ollama] Prompt length:', prompt.length)
 
-    if (!response.ok) throw new Error('Ollama request failed')
+      const response = await fetch(`${this.config.endpoint}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: this.config.model,
+          prompt,
+          format: 'json',
+          stream: false,
+        }),
+      })
 
-    const result = await response.json()
-    return JSON.parse(result.response)
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('[Ollama] HTTP Error:', response.status, response.statusText, errorText)
+        throw new Error(`Ollama request failed: ${response.status} ${response.statusText}. Response: ${errorText}`)
+      }
+
+      const result = await response.json()
+      console.log('[Ollama] Full API response:', result)
+
+      if (!result.response) {
+        throw new Error('No response field in Ollama API result')
+      }
+
+      // Clean the response - remove any markdown or extra text
+      let cleanedResponse = result.response.trim()
+
+      // Remove markdown code blocks if present
+      if (cleanedResponse.startsWith('```json')) {
+        cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '')
+      } else if (cleanedResponse.startsWith('```')) {
+        cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '')
+      }
+
+      // Remove any leading/trailing whitespace and newlines
+      cleanedResponse = cleanedResponse.trim()
+
+      console.log('[Ollama] Final cleaned response:', cleanedResponse)
+
+      const parsed = JSON.parse(cleanedResponse)
+
+      // Validate with Zod
+      try {
+        const validated = validateMatchAnalysis(parsed)
+        console.log('[Ollama] Validation successful. Response contains:', {
+          punishOptions: validated.punishOptions?.length || 0,
+          optimalPunishes: validated.optimalPunishes?.length || 0,
+          strategies: validated.strategies?.length || 0,
+          tips: validated.tips?.length || 0
+        })
+        return validated
+      } catch (error) {
+        console.error('[Ollama] Validation failed:', error)
+        console.error('[Ollama] Expected schema:', {
+          punishOptions: 'array of punish options',
+          optimalPunishes: 'array of optimal punish recommendations',
+          strategies: 'array of strategies',
+          tips: 'array of tips'
+        })
+        console.error('[Ollama] Raw response keys:', Object.keys(parsed))
+        console.error('[Ollama] Raw response:', parsed)
+
+        // Create character-specific fallback response
+        const toCharacterId = (displayName: string): string => {
+          // Handle special cases first
+          const specialMappings: { [key: string]: string } = {
+            'Devil Jin': 'devil-jin',
+            'Kazuya Mishima': 'kazuya',
+            'Marshall Law': 'marshall-law'
+          }
+
+          if (specialMappings[displayName]) {
+            return specialMappings[displayName]
+          }
+
+          return displayName
+            .toLowerCase()
+            .replace(/ /g, '-')
+            .replace(/[^a-z0-9-]/g, '')
+        }
+
+        const playerCharId = request ? toCharacterId(request.playerCharacter) : 'devil-jin'
+        const opponentCharId = request ? toCharacterId(request.opponentCharacter) : 'kazuya'
+
+        // Use the comprehensive punish data
+        console.log('Available character IDs in punish data:', Object.keys(punishData))
+        console.log('Looking for player:', playerCharId, 'opponent:', opponentCharId)
+        console.log('Player display name:', request?.playerCharacter)
+        console.log('Opponent display name:', request?.opponentCharacter)
+
+        const playerPunishData = punishData[playerCharId as keyof typeof punishData]
+        const opponentPunishData = punishData[opponentCharId as keyof typeof punishData]
+
+        const punishableMoves = opponentPunishData?.punishableMoves || []
+        const punishMoves = playerPunishData?.punishMoves || []
+
+        console.log('Punishable moves found:', punishableMoves.length, punishableMoves.map(m => m.Command))
+        console.log('Punish moves found:', punishMoves.length, punishMoves.map(m => ({command: m.Command, startup: m['Start up frame']})))
+
+        // Create comprehensive punish windows: 10f, 12f, 13f, 14f, 15f+
+        const punishWindows = [
+          { window: "10f", maxFrame: 10, minFrame: 9 },
+          { window: "12f", maxFrame: 12, minFrame: 11 },
+          { window: "13f", maxFrame: 13, minFrame: 13 },
+          { window: "14f", maxFrame: 14, minFrame: 14 },
+          { window: "15f+", maxFrame: 99, minFrame: 15 }
+        ]
+
+        const optimalPunishes = punishWindows.map(windowConfig => {
+          // Find punish moves that work in this window
+          const applicablePunishMoves = punishMoves.filter((move: any) => {
+            const startupStr = move['Start up frame']?.split(' ')[0] || '99'
+            // Handle ranges like "i13~14" by taking the first number
+            const startup = parseInt(startupStr.replace('i', '').split('~')[0] || '99')
+            console.log(`Checking move ${move.Command}: startup='${move['Start up frame']}' parsed=${startup} (range: ${windowConfig.minFrame}-${windowConfig.maxFrame})`)
+            return startup >= windowConfig.minFrame && startup <= windowConfig.maxFrame
+          })
+
+          console.log(`Window ${windowConfig.window}: Found ${applicablePunishMoves.length} moves with startup ${windowConfig.minFrame}-${windowConfig.maxFrame}`)
+
+          return {
+            window: windowConfig.window,
+            recommendedMoves: applicablePunishMoves.slice(0, 3).map((m: any) => m.Command).filter(Boolean),
+            situations: [
+              `After opponent moves punishable in ${windowConfig.window}`,
+              `When you have ${windowConfig.window} to punish`,
+              windowConfig.window === "15f+" ? "Launch punishable moves" : `Fast punishes in ${windowConfig.window}`
+            ]
+          }
+        }).filter(p => p.recommendedMoves.length > 0) // Only show windows with moves
+
+        console.log('Final optimal punishes:', optimalPunishes.map(p => `${p.window}: ${p.recommendedMoves.join(', ')}`))
+
+        const fallback: MatchAnalysis = {
+          punishOptions: punishableMoves.map((oppMove: any, index: number) => {
+            const punishMove = punishMoves[index % punishMoves.length] || { Command: "1,1,2" }
+            const oppBlockFrame = Math.abs(parseInt(oppMove['Block frame']?.replace(/[+]/g, '') || '10'))
+            const punishStartup = parseInt(punishMove['Start up frame']?.split(' ')[0] || '10')
+            const frameAdvantage = oppBlockFrame - punishStartup
+
+            return {
+              opponentMove: oppMove.Command || "Unknown move",
+              punishMove: punishMove.Command || "1,1,2",
+              punishWindow: oppBlockFrame >= 15 ? "15f+" : oppBlockFrame >= 14 ? "14f" : oppBlockFrame >= 13 ? "13f" : oppBlockFrame >= 12 ? "12f" : "10f",
+              frameAdvantage: `${frameAdvantage} frames`,
+              description: `Punish ${oppMove.Command} (${oppMove['Block frame']} on block) with ${punishMove.Command} for ${frameAdvantage} frame advantage.`
+            }
+          }),
+          optimalPunishes,
+          strategies: [
+            {
+              name: "Frame-Specific Punishing",
+              description: "Use the correct punish window based on opponent's move. Faster moves for smaller windows, launch punishers for -15 and worse.",
+              conditions: punishableMoves.slice(0, 3).map((m: any) => `When opponent uses ${m.Command} (${m['Block frame']} on block)`),
+              moves: punishMoves.slice(0, 5).map((m: any) => m.Command).filter(Boolean)
+            }
+          ],
+          tips: [
+            `Found ${punishableMoves.length} punishable moves in this matchup`,
+            "Use 10f punishers for -10 moves, 12f-14f for medium, 15f+ launchers for severe punishable moves",
+            "Count frames after blocking to ensure safe punishment",
+            "Practice punish timing with the fastest available moves for each window"
+          ]
+        }
+
+        console.log('[Ollama] Using fallback response due to validation failure')
+        return fallback
+      }
+    } catch (error) {
+      console.error('[Ollama] Error:', error)
+      if (error instanceof SyntaxError) {
+        console.error('[Ollama] JSON parse error. Check the response format above.')
+      }
+      throw error
+    }
   }
 }
 

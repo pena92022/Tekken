@@ -50,11 +50,11 @@ export function MatchAnalysis() {
     setError(null)
 
     try {
-      // Use OpenAI by default (more accurate than Ollama)
+      // Use Ollama with gemma3:1b by default
       const config: AIModelConfig = {
-        provider: 'openai',
-        model: 'gpt-4o-mini',
-        apiKey: process.env.OPENAI_API_KEY
+        provider: 'ollama',
+        model: process.env.OLLAMA_MODEL || 'gemma3:1b',
+        endpoint: process.env.OLLAMA_ENDPOINT || 'http://localhost:11434'
       }
 
       const result = await aiService.analyzeMatch(request, config)
@@ -145,22 +145,47 @@ export function MatchAnalysis() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Target className="w-5 h-5" />
-                  Key Moves
+                  {request.playerCharacter} - Optimal Punishes
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {analysis.keyMoves.map((move, index) => (
+                {analysis?.optimalPunishes?.map((optimal, index) => (
                   <div key={index} className="border border-slate-700 rounded-lg p-3">
-                    <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-medium">{move.name}</h4>
-                      <Badge variant={move.priority === 'high' ? 'destructive' : move.priority === 'medium' ? 'secondary' : 'outline'}>
-                        {move.priority}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium">{optimal.window} Window</span>
+                      <Badge variant="secondary">
+                        {optimal.recommendedMoves.length} moves
                       </Badge>
                     </div>
-                    <p className="text-sm text-slate-400 mb-2">{move.notation}</p>
-                    <p className="text-sm text-slate-300">{move.description}</p>
+                    <div className="space-y-2">
+                      <div>
+                        <span className="text-xs text-slate-400">Punish with:</span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {optimal.recommendedMoves.map((move, idx) => (
+                            <Badge key={idx} variant="outline" className="text-xs">
+                              {move}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-xs text-slate-400">When:</span>
+                        <ul className="text-xs text-slate-300 mt-1">
+                          {optimal.situations.map((situation, idx) => (
+                            <li key={idx}>• {situation}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
                   </div>
                 ))}
+                {(!analysis?.optimalPunishes || analysis.optimalPunishes.length === 0) && (
+                  <div className="text-center text-slate-400 py-8">
+                    <Target className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No optimal punishes available</p>
+                    <p className="text-xs">Check console for AI response details</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -168,21 +193,31 @@ export function MatchAnalysis() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="w-5 h-5" />
-                  Counter Moves
+                  {request.opponentCharacter} - Punishable Moves
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {analysis.counters.map((counter, index) => (
+                {analysis?.punishOptions?.slice(0, 10).map((punish, index) => (
                   <div key={index} className="border border-slate-700 rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium">{counter.move}</span>
-                      <Badge variant="outline">
-                        +{counter.frameAdvantage}f
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <h4 className="font-medium">{punish.opponentMove}</h4>
+                        <span className="text-xs text-slate-400">{punish.punishWindow} punishable</span>
+                      </div>
+                      <Badge variant="destructive">
+                        {punish.frameAdvantage}
                       </Badge>
                     </div>
-                    <p className="text-sm text-slate-300">{counter.counter}</p>
+                    <p className="text-sm text-slate-300">{punish.description}</p>
                   </div>
                 ))}
+                {(!analysis?.punishOptions || analysis.punishOptions.length === 0) && (
+                  <div className="text-center text-slate-400 py-8">
+                    <Shield className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No punishable moves available</p>
+                    <p className="text-xs">Check console for AI response details</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -195,7 +230,7 @@ export function MatchAnalysis() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {analysis.strategies.map((strategy, index) => (
+              {analysis?.strategies?.map((strategy, index) => (
                 <div key={index} className="border border-slate-700 rounded-lg p-4">
                   <h4 className="font-medium mb-2">{strategy.name}</h4>
                   <p className="text-sm text-slate-300 mb-2">{strategy.description}</p>
